@@ -37,6 +37,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     error Raffle__NotEnoughETH();
     error Raffle__TransferFailed();
     error Raffle__NotOpen();
+    error Raffle__UpkeepNotNeeded(uint balance, uint playersLength, uint raffleState);
     
     // type declarations
     enum RaffleState {
@@ -59,6 +60,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     RaffleState private s_raffleState;
 
     event RaffleEntered(address indexed player);
+    event WinnerPicked(address indexed winner);
 
     constructor(uint entranceFee, uint interval, address vrfCoordinator, bytes32 gasLane, uint subscriptionId, uint32 callbackGasLimit) 
     VRFConsumerBaseV2Plus(vrfCoordinator) {
@@ -84,9 +86,28 @@ contract Raffle is VRFConsumerBaseV2Plus {
         emit RaffleEntered(msg.sender);
     }
 
-    function pickWinner() external {
-        if (block.timestamp - s_lastTimeStamp < i_interval) { // check if enough time has passed
-            revert();
+    /**
+     * @dev This function is called by the Chainlink Node to check if upkeep is needed.
+     * @param - ignored
+     * @return upkeepNeeded - true 
+     * @return - ignored
+     */
+    function checkUpkeep(bytes memory /* checkData */) public view returns (bool upkeepNeeded, bytes memory /* performData */) {
+        bool isOpen = (s_raffleState == RaffleState.OPEN);
+        bool timePassed = ((block.timestamp - s_lastTimeStamp) >= i_interval);
+        bool hasPlayers = s_players.length > 0;
+        bool hasBalance = address(this).balance > 0;
+
+        upkeepNeeded = (isOpen && timePassed && hasPlayers && hasBalance);
+        
+        return (upkeepNeeded, "");
+    }
+
+    // pick winner
+    function performUpkeep(bytes calldata /* performData */) external {
+        (bool upkeepNeeded, ) = checkUpkeep("");
+        if (!upkeepNeeded) {
+            revert Raffle__UpkeepNotNeeded(address(this).balance, s_players.length, uint(s_raffleState));
         }
 
         s_raffleState = RaffleState.CALCULATING;
@@ -105,22 +126,27 @@ contract Raffle is VRFConsumerBaseV2Plus {
             )
         });
 
-        uint requestId = s_vrfCoordinator.requestRandomWords(request);
+        s_vrfCoordinator.requestRandomWords(request);
 
     }
 
-    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal virtual override {
+    function fulfillRandomWords(uint256, /* requestId */ uint256[] calldata randomWords) internal override  {
+        // check
+
+        // effects
         uint256 winnerIndex = randomWords[0] % s_players.length;
         address payable recentWinner = s_players[winnerIndex];
         s_recentWinner = recentWinner;
         s_raffleState = RaffleState.OPEN;
+        s_players = new address payable[](0); // reset players array
+        s_lastTimeStamp = block.timestamp;
+        emit WinnerPicked(s_recentWinner);
+
+        // interactions
         (bool success, ) = recentWinner.call{value: address(this).balance}("");
         if (!success) {
             revert Raffle__TransferFailed();
         }
-        // s_players = new address payable[](0); // reset players array
-        // s_lastTimeStamp = block.timestamp;
-
     }
 
     function getEntranceFee() external view returns (uint) {
