@@ -57,7 +57,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     address payable[] private s_players;
     uint private s_lastTimeStamp;
     address private s_recentWinner;
-    RaffleState private s_raffleState;
+    RaffleState private s_raffleState; // start as OPEN
 
     event RaffleEntered(address indexed player);
     event WinnerPicked(address indexed winner);
@@ -155,6 +155,22 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     function getInterval() external view returns (uint) {
         return i_interval;
+    }
+
+    function getVrfCoordinator() external view returns (address) {
+        return address(s_vrfCoordinator);
+    }
+
+    function getGasLane() external view returns (bytes32) {
+        return i_keyHash;
+    }
+    
+    function getCallbackGasLimit() external view returns (uint32) {
+        return i_callbackGasLimit;
+    }
+
+    function getRaffleState() external view returns (RaffleState) {
+        return s_raffleState;
     }
 
 }
