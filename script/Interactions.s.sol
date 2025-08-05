@@ -62,8 +62,6 @@ contract FundSubscription is Script, CodeConstants {
     }
 
     function run() public {
-        // HelperConfig helperConfig = new HelperConfig();
-        // (uint subId, address vrfCoordinator) = helperConfig.getConfig().subscriptionId;
         fundSubscriptionUsingConfig();
     }
 }
