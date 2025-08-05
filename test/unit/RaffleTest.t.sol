@@ -26,13 +26,13 @@ contract RaffleTest is Test {
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
         (raffle, helperConfig) = deployer.deployContract();
-        HelperConfig.NetworkConfig memory networkConfig = helperConfig.getConfig();
-        entranceFee = networkConfig.entranceFee;
-        interval = networkConfig.interval;
-        vrfCoordinator = networkConfig.vrfCoordinator;
-        gasLane = networkConfig.gasLane;
-        callbackGasLimit = networkConfig.callbackGasLimit;
-        subscriptionId = networkConfig.subscriptionId;
+        HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
+        entranceFee = config.entranceFee;
+        interval = config.interval;
+        vrfCoordinator = config.vrfCoordinator;
+        gasLane = config.gasLane;
+        callbackGasLimit = config.callbackGasLimit;
+        subscriptionId = config.subscriptionId;
 
         vm.deal(PLAYER, STARTING_PLAYER_BALANCE);
     }
